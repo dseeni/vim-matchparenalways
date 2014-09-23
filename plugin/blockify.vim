@@ -35,9 +35,15 @@ let s:prio  = exists('g:blockify_match_priority')  ? g:blockify_match_priority  
 let s:id    = exists('g:blockify_match_id')        ? g:blockify_match_id        : 666
 
 let s:pairs = {
-      \ 'c':    [ '{', '}' ],
-      \ 'cpp':  [ '{', '}' ],
-      \ 'java': [ '{', '}' ],
+      \ 'c':          [ '{', '}' ],
+      \ 'cpp':        [ '{', '}' ],
+      \ 'java':       [ '{', '}' ],
+      \ 'javascript': [ '{', '}' ],
+      \ 'obj':        [ '{', '}' ],
+      \ 'objcpp':     [ '{', '}' ],
+      \ 'php':        [ '{', '}' ],
+      \ 'rust':       [ '{', '}' ],
+      \ 'go':         [ '{', '}' ],
       \}
 
 if exists('g:blockify_pairs')
