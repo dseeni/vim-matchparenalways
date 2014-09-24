@@ -1,4 +1,4 @@
-" Copyright (c) 2013 Marco Hinz
+" Copyright (c) 2014 Marco Hinz
 " All rights reserved.
 "
 " Redistribution and use in source and binary forms, with or without
@@ -30,9 +30,10 @@ if exists('g:loaded_blockify') || &cp || !exists('##CursorMoved') || !exists('##
 endif
 let g:loaded_blockify = 1
 
-let s:group = exists('g:blockify_highlight_group') ? g:blockify_highlight_group : 'MatchParen'
-let s:prio  = exists('g:blockify_match_priority')  ? g:blockify_match_priority  : 42
-let s:id    = exists('g:blockify_match_id')        ? g:blockify_match_id        : 666
+let s:group      = get(g:, 'blockify_highlight_group', 'MatchParen')
+let s:everything = get(g:, 'blockify_highlight_everything')
+let s:prio       = get(g:, 'blockify_match_priority', 42)
+let s:id         = get(g:, 'blockify_match_id', 666)
 
 let s:pairs = {
       \ 'c':          [ '{', '}' ],
@@ -90,12 +91,19 @@ function! s:highlight_block() abort
     let pos_close = searchpairpos(char_open, '', char_close, 'Wn')
   endif
 
-  if exists('pos_open') && exists('pos_close')
-    let w:match = matchadd(s:group, '\%(\%'. pos_open[0] .'l\%'. pos_open[1] .'c\)\|\(\%'. pos_close[0] .'l\%'. pos_close[1] .'c\)', s:prio, s:id)
-  elseif exists('pos_open')
-    let w:match = matchadd(s:group, '\%(\%'. pos_open[0] .'l\%'. pos_open[1] .'c\)', s:prio, s:id)
+  if s:everything
+    if exists('pos_open') && exists('pos_close')
+      let pos_close[1] += 1
+      let w:match = matchadd(s:group, '\%'. pos_open[0] .'l\%'. pos_open[1] .'c.*\_.\+\%'. pos_close[0] .'l\%'. pos_close[1] .'c', s:prio, s:id)
+    endif
   else
-    let w:match = matchadd(s:group, '\%(\%'. pos_close[0] .'l\%'. pos_close[1] .'c\)', s:prio, s:id)
+    if exists('pos_open') && exists('pos_close')
+      let w:match = matchadd(s:group, '\%(\%'. pos_open[0] .'l\%'. pos_open[1] .'c\)\|\(\%'. pos_close[0] .'l\%'. pos_close[1] .'c\)', s:prio, s:id)
+    elseif exists('pos_open')
+      let w:match = matchadd(s:group, '\%(\%'. pos_open[0] .'l\%'. pos_open[1] .'c\)', s:prio, s:id)
+    else
+      let w:match = matchadd(s:group, '\%(\%'. pos_close[0] .'l\%'. pos_close[1] .'c\)', s:prio, s:id)
+    endif
   endif
 endfunction
 
