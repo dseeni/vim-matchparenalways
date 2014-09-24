@@ -34,6 +34,7 @@ let s:group      = get(g:, 'blockify_highlight_group', 'MatchParen')
 let s:everything = get(g:, 'blockify_highlight_everything')
 let s:prio       = get(g:, 'blockify_match_priority', 42)
 let s:id         = get(g:, 'blockify_match_id', 666)
+let s:default    = [ '{', '}' ]
 
 let s:pairs = {
       \ 'c':          [ '{', '}' ],
@@ -54,35 +55,19 @@ endif
 autocmd BufEnter * call s:set_at_enter_buf()
 
 function! s:set_at_enter_buf() abort
-  if has_key(s:pairs, &ft)
-    augroup blockify
-      autocmd!
-      exe 'autocmd CursorMoved,CursorMovedI <buffer> call s:highlight_block()'
-    augroup END
-  endif
+  augroup blockify
+    autocmd!
+    exe 'autocmd CursorMoved,CursorMovedI <buffer> call s:highlight_block()'
+  augroup END
 endfunction
 
 function! s:highlight_block() abort
-  if !has_key(s:pairs, &ft) && exists('w:match')
-    try
-      call matchdelete(w:match)
-    catch /E803:/
-      "Do nothing
-    endtry
-    unlet w:match
-    return
-  elseif !has_key(s:pairs, &ft)
-    return
-  elseif exists('w:match')
-    try
-      call matchdelete(w:match)
-    catch /E803:/
-      "Do nothing
-    endtry
+  if exists('w:match')
+    silent! call matchdelete(w:match)
   endif
 
-  let char_open  = s:pairs[&ft][0]
-  let char_close = s:pairs[&ft][1]
+  let char_open  = get(s:pairs, &ft, s:default)[0]
+  let char_close = get(s:pairs, &ft, s:default)[1]
 
   if matchstr(getline('.'), '.', col('.')-1) != char_open
     let pos_open = searchpairpos(char_open, '', char_close, 'Wnb')
