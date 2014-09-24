@@ -66,6 +66,10 @@ function! s:highlight_block() abort
     silent! call matchdelete(w:match)
   endif
 
+  if exists('w:paren_hl_on') && w:paren_hl_on
+    return
+  endif
+
   let char_open  = get(s:pairs, &ft, s:default)[0]
   let char_close = get(s:pairs, &ft, s:default)[1]
 
