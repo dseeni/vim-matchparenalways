@@ -46,6 +46,7 @@ let s:pairs = {
       \ 'php':        [ '{', '}' ],
       \ 'rust':       [ '{', '}' ],
       \ 'go':         [ '{', '}' ],
+      \ 'clojure':    [ '(', ')' ],
       \}
 
 if exists('g:blockify_pairs')
