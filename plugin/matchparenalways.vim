@@ -58,13 +58,18 @@ autocmd BufEnter * call s:set_at_enter_buf()
 function! s:set_at_enter_buf() abort
   augroup blockify
     autocmd!
-    exe 'autocmd CursorMoved,CursorMovedI <buffer> call s:highlight_block()'
+    autocmd CursorMoved,CursorMovedI <buffer> call <sid>highlight_block()
   augroup END
 endfunction
 
 function! s:highlight_block() abort
   if exists('w:match')
     silent! call matchdelete(w:match)
+  endif
+
+  if exists('w:matchparenalways_last') && localtime() - w:matchparenalways_last <= 0
+    "debounce
+    return
   endif
 
   if exists('w:paren_hl_on') && w:paren_hl_on
@@ -75,10 +80,14 @@ function! s:highlight_block() abort
   let char_close = get(s:pairs, &ft, s:default)[1]
 
   if matchstr(getline('.'), '.', col('.')-1) != char_open
-    let pos_open = searchpairpos(char_open, '', char_close, 'Wnb')
+    let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 100)
   endif
   if matchstr(getline('.'), '.', col('.')-1) != char_close
-    let pos_close = searchpairpos(char_open, '', char_close, 'Wn')
+    let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 100)
+  endif
+
+  if (exists('pos_open') && pos_open == [0,0]) || (exists('pos_close') && pos_close == [0,0])
+    let w:matchparenalways_last = localtime()
   endif
 
   if s:everything
