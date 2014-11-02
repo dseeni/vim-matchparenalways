@@ -37,15 +37,6 @@ let s:id         = get(g:, 'blockify_match_id', 666)
 let s:default    = [ '{', '}' ]
 
 let s:pairs = {
-      \ 'c':          [ '{', '}' ],
-      \ 'cpp':        [ '{', '}' ],
-      \ 'java':       [ '{', '}' ],
-      \ 'javascript': [ '{', '}' ],
-      \ 'obj':        [ '{', '}' ],
-      \ 'objcpp':     [ '{', '}' ],
-      \ 'php':        [ '{', '}' ],
-      \ 'rust':       [ '{', '}' ],
-      \ 'go':         [ '{', '}' ],
       \ 'vim':        [ '\<if\>', '\<endif\>' ],
       \ 'clojure':    [ '(', ')' ],
       \}
@@ -57,10 +48,12 @@ endif
 autocmd BufEnter * call s:set_at_enter_buf()
 
 function! s:set_at_enter_buf() abort
-  augroup blockify
-    autocmd!
-    autocmd CursorMoved,CursorMovedI <buffer> call <sid>highlight_block()
-  augroup END
+  if &filetype !=# 'help'
+    augroup matchparenalways
+      autocmd!
+      autocmd CursorMoved,CursorMovedI <buffer> call <sid>highlight_block()
+    augroup END
+  endif
 endfunction
 
 function! s:highlight_block() abort
@@ -68,7 +61,7 @@ function! s:highlight_block() abort
     silent! call matchdelete(w:match)
   endif
 
-  if exists('w:matchparenalways_last') && localtime() - w:matchparenalways_last <= 0
+  if getchar(1) != 0
     "debounce
     return
   endif
@@ -80,15 +73,12 @@ function! s:highlight_block() abort
   let char_open  = get(s:pairs, &ft, s:default)[0]
   let char_close = get(s:pairs, &ft, s:default)[1]
 
-  if matchstr(getline('.'), '.', col('.')-1) != char_open
-    let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 100)
+  let curchar = matchstr(getline('.'), '.', col('.')-1)
+  if curchar != char_open
+    let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 20)
   endif
-  if matchstr(getline('.'), '.', col('.')-1) != char_close
-    let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 100)
-  endif
-
-  if (exists('pos_open') && pos_open == [0,0]) || (exists('pos_close') && pos_close == [0,0])
-    let w:matchparenalways_last = localtime()
+  if curchar != char_close
+    let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 20)
   endif
 
   if s:everything
