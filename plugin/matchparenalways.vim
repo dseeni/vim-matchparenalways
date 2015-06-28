@@ -34,11 +34,11 @@ let s:group      = get(g:, 'blockify_highlight_group', 'MatchParen')
 let s:everything = get(g:, 'blockify_highlight_everything')
 let s:prio       = get(g:, 'blockify_match_priority', 42)
 let s:id         = get(g:, 'blockify_match_id', 666)
-let s:default    = [ '{', '}' ]
+let s:default    = [[ '{', '}' ], [ '(', ')' ], [ '\[', '\]' ]]
 
 let s:pairs = {
-      \ 'vim':        [ '\<if\>', '\<endif\>' ],
-      \ 'clojure':    [ '(', ')' ],
+      \ 'vim':        [[ '\<if\>', '\<endif\>' ]],
+      \ 'clojure':    [[ '(', ')' ]],
       \}
 
 if exists('g:blockify_pairs')
@@ -70,29 +70,39 @@ function! s:highlight_block() abort
     return
   endif
 
-  let char_open  = get(s:pairs, &ft, s:default)[0]
-  let char_close = get(s:pairs, &ft, s:default)[1]
+  let s:matchpairs = get(s:pairs, &ft, s:default)
 
-  let curchar = matchstr(getline('.'), '.', col('.')-1)
-  if curchar != char_open
-    let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 20)
-  endif
-  if curchar != char_close
-    let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 20)
-  endif
+  let [closest_open, closest_close]  = [[0,0],[0,0]]
+
+  for [char_open, char_close] in s:matchpairs
+
+    let curchar = matchstr(getline('.'), '.', col('.')-1)
+    if curchar != char_open
+      let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 20)
+      if pos_open[0] >= closest_open[0] && pos_open[1] >= closest_open[1]
+        if curchar != char_close
+          let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 20)
+          if pos_close[0] > 0 && pos_close[1] > 0
+            let [closest_open, closest_close] = [pos_open, pos_close]
+          endif
+        endif
+      endif
+    endif
+
+  endfor
 
   if s:everything
-    if exists('pos_open') && exists('pos_close')
-      let pos_close[1] += 1
-      let w:match = matchadd(s:group, '\%'. pos_open[0] .'l\%'. pos_open[1] .'c.*\_.\+\%'. pos_close[0] .'l\%'. pos_close[1] .'c', s:prio, s:id)
+    if exists('closest_open') && exists('closest_close')
+      let closest_close[1] += 1
+      let w:match = matchadd(s:group, '\%'. closest_open[0] .'l\%'. closest_open[1] .'c.*\_.\+\%'. closest_close[0] .'l\%'. closest_close[1] .'c', s:prio, s:id)
     endif
   else
-    if exists('pos_open') && exists('pos_close')
-      let w:match = matchadd(s:group, '\%(\%'. pos_open[0] .'l\%'. pos_open[1] .'c\)\|\(\%'. pos_close[0] .'l\%'. pos_close[1] .'c\)', s:prio, s:id)
-    elseif exists('pos_open')
-      let w:match = matchadd(s:group, '\%(\%'. pos_open[0] .'l\%'. pos_open[1] .'c\)', s:prio, s:id)
+    if exists('closest_open') && exists('closest_close')
+      let w:match = matchadd(s:group, '\%(\%'. closest_open[0] .'l\%'. closest_open[1] .'c\)\|\(\%'. closest_close[0] .'l\%'. closest_close[1] .'c\)', s:prio, s:id)
+    elseif exists('closest_open')
+      let w:match = matchadd(s:group, '\%(\%'. closest_open[0] .'l\%'. closest_open[1] .'c\)', s:prio, s:id)
     else
-      let w:match = matchadd(s:group, '\%(\%'. pos_close[0] .'l\%'. pos_close[1] .'c\)', s:prio, s:id)
+      let w:match = matchadd(s:group, '\%(\%'. closest_close[0] .'l\%'. closest_close[1] .'c\)', s:prio, s:id)
     endif
   endif
 endfunction
