@@ -25,84 +25,83 @@
 " ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 " POSSIBILITY OF SUCH DAMAGE.
 
-if exists('g:loaded_blockify') || &cp || !exists('##CursorMoved') || !exists('##CursorMovedI')
+if exists('g:loaded_matchparenalways') || &cp || !exists('##CursorMoved') || !exists('##CursorMovedI')
   finish
 endif
-let g:loaded_blockify = 1
+let g:loaded_matchparenalways = 1
 
-let s:group      = get(g:, 'blockify_highlight_group', 'MatchParen')
-let s:everything = get(g:, 'blockify_highlight_everything')
-let s:prio       = get(g:, 'blockify_match_priority', 42)
-let s:id         = get(g:, 'blockify_match_id', 666)
+let s:group      = get(g:, 'matchparenalways_hl_group', 'MatchParen')
+let s:hl_all     = get(g:, 'matchparenalways_hl_all')
+let s:priority   = get(g:, 'matchparenalways_hl_priority', -1)
 let s:default    = [[ '{', '}' ], [ '(', ')' ], [ '\[', '\]' ]]
 
 let s:pairs = {
-      \ 'vim':        [[ '\<if\>', '\<endif\>' ]],
-      \ 'clojure':    [[ '(', ')' ]],
+      \ 'vim':      extend([['\<if\>','\<endif\>'], ['\<for\>','\<endfor\>']], s:default),
+      \ 'clojure':  [[ '(', ')' ], [ '\[', '\]' ], [ '{', '}' ]],
       \}
 
-if exists('g:blockify_pairs')
-  call extend(s:pairs, g:blockify_pairs)
-endif
-
-autocmd BufEnter * call s:set_at_enter_buf()
+call extend(s:pairs, get(g:, 'matchparenalways_pairs', {}))
 
 function! s:set_at_enter_buf() abort
   if &filetype !=# 'help'
     augroup matchparenalways
-      autocmd!
+      autocmd! CursorMoved,CursorMovedI
       autocmd CursorMoved,CursorMovedI <buffer> call <sid>highlight_block()
     augroup END
   endif
 endfunction
 
+augroup matchparenalways
+  autocmd!
+  autocmd BufEnter * call s:set_at_enter_buf()
+augroup END
+
 function! s:highlight_block() abort
-  if exists('w:match')
-    silent! call matchdelete(w:match)
-  endif
+  silent! call matchdelete(w:matchparenalways_hl_id)
 
-  if getchar(1) != 0
-    "debounce
-    return
-  endif
-
-  if exists('w:paren_hl_on') && w:paren_hl_on
+  if getchar(1) != 0  "debounce
     return
   endif
 
   let s:matchpairs = get(s:pairs, &ft, s:default)
-
-  let [closest_open, closest_close]  = [[0,0],[0,0]]
+  let [pos_open, pos_close]  = [[0,0],[0,0]]
 
   for [char_open, char_close] in s:matchpairs
-
     let curchar = matchstr(getline('.'), '.', col('.')-1)
     if curchar != char_open
       let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 20)
-      if pos_open[0] >= closest_open[0] && pos_open[1] >= closest_open[1]
+      if pos_open[0] >= pos_open[0] && pos_open[1] >= pos_open[1]
         if curchar != char_close
           let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 20)
           if pos_close[0] > 0 && pos_close[1] > 0
-            let [closest_open, closest_close] = [pos_open, pos_close]
+            let [pos_open, pos_close] = [pos_open, pos_close]
+            break
           endif
         endif
       endif
     endif
-
   endfor
 
-  if s:everything
-    if exists('closest_open') && exists('closest_close')
-      let closest_close[1] += 1
-      let w:match = matchadd(s:group, '\%'. closest_open[0] .'l\%'. closest_open[1] .'c.*\_.\+\%'. closest_close[0] .'l\%'. closest_close[1] .'c', s:prio, s:id)
-    endif
+  if pos_open == [0,0] || pos_close == [0,0]
+    return
+  endif
+
+  let line1 = pos_open[0]
+  let col1  = pos_open[1]
+  let line2 = pos_close[0]
+  let col2  = pos_close[1]
+
+  if s:hl_all
+    let col2 += 1
+    let w:matchparenalways_hl_id = matchadd(s:group, '\%'.line1.'l\%'.col1.'c.*\_.\+\%'.line2.'l\%'.col2.'c', s:priority)
   else
-    if exists('closest_open') && exists('closest_close')
-      let w:match = matchadd(s:group, '\%(\%'. closest_open[0] .'l\%'. closest_open[1] .'c\)\|\(\%'. closest_close[0] .'l\%'. closest_close[1] .'c\)', s:prio, s:id)
-    elseif exists('closest_open')
-      let w:match = matchadd(s:group, '\%(\%'. closest_open[0] .'l\%'. closest_open[1] .'c\)', s:prio, s:id)
-    else
-      let w:match = matchadd(s:group, '\%(\%'. closest_close[0] .'l\%'. closest_close[1] .'c\)', s:prio, s:id)
+    let leftmostcol = col1 > col2 ? col2 : col1
+    if (line2 - line1) > 2
+      " Highlight the leftmost column instead of the actual delimiters.
+      let w:matchparenalways_hl_id = matchadd(s:group, '\%>'.line1.'l\%'.leftmostcol.'c\%<'.line2 .'l', s:priority)
+    elseif !(exists('w:paren_hl_on') && w:paren_hl_on)
+      "    ^ Skip if MatchParen plugin is active (i.e. cursor is on a paren).
+      let w:matchparenalways_hl_id = matchadd(s:group, '\%(\%'.line1.'l\%'.col1.'c\)\|\(\%'.line2.'l\%'.col2.'c\)', s:priority)
     endif
   endif
 endfunction
