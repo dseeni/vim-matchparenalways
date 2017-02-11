@@ -69,13 +69,12 @@ function! s:highlight_block() abort
   for [char_open, char_close] in s:matchpairs
     let curchar = matchstr(getline('.'), '.', col('.')-1)
     if curchar != char_open
-      let pos_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 20)
-      if pos_open[0] >= pos_open[0] && pos_open[1] >= pos_open[1]
+      let match_open = searchpairpos(char_open, '', char_close, 'Wnb', '', 0, 20)
+      if match_open[0] >= pos_open[0] && match_open[1] >= pos_open[1]
         if curchar != char_close
-          let pos_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 20)
-          if pos_close[0] > 0 && pos_close[1] > 0
-            let [pos_open, pos_close] = [pos_open, pos_close]
-            break
+          let match_close = searchpairpos(char_open, '', char_close, 'Wn', '', 0, 20)
+          if match_close[0] > 0 && match_close[1] > 0
+            let [pos_open, pos_close] = [match_open, match_close]
           endif
         endif
       endif
